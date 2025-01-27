@@ -1,7 +1,8 @@
 import random
 import os
 import base64
-from hashlib import sha256
+from hashlib import sha3_256
+import math
 
 class RSACore:
     def __init__(self):
@@ -62,18 +63,25 @@ class RSACore:
         
         return (self.e, n), (d, n)
 
-    def encrypt(self, message, key):
-        e, n = key
+    def encrypt(self, message, public_key):
+        """Encrypt a message using RSA-OAEP"""
+        e, n = public_key
+        # OAEP stands for Optimal Asymmetric Encryption Padding
         oaep = OAEP(len(bin(n)) - 2)
         padded_message = oaep.pad(message)
+        print(f"Encrypted message with OAEP: {padded_message}")
         padded_int = int.from_bytes(padded_message, byteorder='big')
         encrypted_int = self.mod_pow(padded_int, e, n)
+        # Debug: print the encrypted message with OAEP
         return encrypted_int
     
     def decrypt(self, ciphertext, key):
         d, n = key
         decrypted_int = self.mod_pow(ciphertext, d, n)
         decrypted_message = decrypted_int.to_bytes((decrypted_int.bit_length() + 7) // 8, byteorder='big')
+        # Add debug for see the decrypted message
+        print(f"Decrypted message (before OAEP unpad): {decrypted_message}")
+        
         oaep = OAEP(len(bin(n)) - 2)
         original_message = oaep.unpad(decrypted_message)
         return original_message
@@ -90,90 +98,100 @@ class RSACore:
 
 
 class OAEP:
-    def __init__(self, n_len):
+    def __init__(self, n_bits):
         self.k0 = 256  # SHA-256 output length
         self.k1 = 256  # Security parameter
-        self.n_len = n_len
+        self.n_bits = n_bits
+        self.n_bytes = (n_bits + 7) // 8
 
     def mgf1(self, seed, length):
-        """Mask Generation Function"""
+        """Mask Generation Function based on SHA3-256"""
+        if length > (2**32) *32:
+            raise ValueError("Mask too long")
+        
         result = b''
         counter = 0
+
         while len(result) < length:
-            C = counter.to_bytes(4, 'big')
-            result += sha256(seed + C).digest()
+            C = counter.to_bytes(4, byteorder='big')
+            result += sha3_256(seed + C).digest()
             counter += 1
+
         return result[:length]
 
     def pad(self, message):
-        """OAEP Padding"""
+        """Apply OAEP padding to a message"""
+
         m_len = len(message)
-        if m_len > self.n_len - self.k0 - self.k1 - 2:
+        emlen = self.n_bytes - 1 # Reserve one byte for leading zero
+
+        if m_len > emlen - 2 * (self.k0 // 8) -2:
             raise ValueError("Message too long")
 
-        # Generate random padding
-        r = os.urandom(self.k0)
-        
-        # Create padded message
-        db = b'\x00' * self.k1 + message + b'\x01'
-        db_mask = self.mgf1(r, len(db))
+        # Generate random seed
+        seed = os.urandom(self.k0 // 8)
+
+        # Create data block
+        db = b'\x00' * (emlen - m_len - (self.k0 // 8) - 1) + b'\x01' + message
+
+        # Generate masks
+        db_mask = self.mgf1(seed, len(db))
         masked_db = bytes(a ^ b for a, b in zip(db, db_mask))
         
-        seed_mask = self.mgf1(masked_db, self.k0)
-        masked_seed = bytes(a ^ b for a, b in zip(r, seed_mask))
+        seed_mask = self.mgf1(masked_db, self.k0 // 8)
+        masked_seed = bytes(a ^ b for a, b in zip(seed, seed_mask))
         
-        return masked_seed + masked_db
+        # Concatenate everything
+        em = b'\x00' + masked_seed + masked_db
+        return em
 
-    def unpad(self, padded):
-        """OAEP Unpadding"""
-
-        print(f"Length of padded message: {len(padded)}")
-        print(f"Value of self.k0: {self.k0}")
-
-        masked_seed = padded[:self.k0]
-        masked_db = padded[self.k0:]
-
-        # Print the lengths of masked_seed and masked_db
-        print(f"Length of masked_seed: {len(masked_seed)}")
-        print(f"Length of masked_db: {len(masked_db)}")
-
-         # Ensure masked_db is not empty
-        if len(masked_db) == 0:
-            raise ValueError("masked_db is empty, check the slicing operation")
-    
-        seed_mask = self.mgf1(masked_db, self.k0)
+    def unpad(self, padded_msg):
+        """Remove OAEP padding from a message"""
+        if len(padded_msg) != self.n_bytes:
+            raise ValueError(f"Decryption error: wrong message length")
+            
+        # Split the message
+        if padded_msg[0] != 0:
+            raise ValueError("Decryption error: wrong padding")
+            
+        masked_seed = padded_msg[1:1 + self.k0 // 8]
+        masked_db = padded_msg[1 + self.k0 // 8:]
+        
+        # Recover seed
+        seed_mask = self.mgf1(masked_db, self.k0 // 8)
         seed = bytes(a ^ b for a, b in zip(masked_seed, seed_mask))
         
+        # Recover data block
         db_mask = self.mgf1(seed, len(masked_db))
         db = bytes(a ^ b for a, b in zip(masked_db, db_mask))
-
-        print(f"masked_seed: {masked_seed}")
-        print(f"masked_db: {masked_db}")
-        print(f"seed_mask: {seed_mask}")
-        print(f"seed: {seed}")
-        print(f"db_mask: {db_mask}")
-        print(f"db: {db}")
-
         
-        # Find message in unpadded data
-        i = self.k1
+        # Find message boundary
+        i = 0
         while i < len(db):
             if db[i] == 1:
-                return db[i+1:]
+                return db[i + 1:]
+            elif db[i] != 0:
+                raise ValueError("Decryption error: wrong padding")
             i += 1
-        raise ValueError("Invalid padding")
+            
+        raise ValueError("Decryption error: no message found")
 
 def sign(message, private_key):
-    hashed = int.from_bytes(sha3_256(message).digest(), byteorder='big')
-    signature = rsa_core.encrypt(hashed.to_bytes((hashed.bit_length() + 7) // 8, byteorder='big'), private_key)
-    return base64.b64encode(signature.to_bytes((signature.bit_length() + 7) // 8, byteorder='big'))
+    """Sign a message using RSA-SHA3"""
+    hashed = sha3_256(message).digest()
+    signature = int.from_bytes(hashed, byteorder='big')
+    d, n = private_key
+    signed = pow(signature, d, n)
+    return base64.b64encode(signed.to_bytes((n.bit_length() + 7) // 8, byteorder='big'))
 
 
 def verify(message, signature, public_key):
-    hashed = int.from_bytes(sha3_256(message).digest(), byteorder='big')
+    """Verify an RSA-SHA3 signature"""
+    e, n = public_key
     signature = int.from_bytes(base64.b64decode(signature), byteorder='big')
-    decrypted_hash = rsa_core.decrypt(signature, public_key)
-    return hashed == int.from_bytes(decrypted_hash, byteorder='big')
+    verified = pow(signature, e, n)
+    hashed = int.from_bytes(sha3_256(message).digest(), byteorder='big')
+    return verified == hashed
 
 def verify_rsa_parameters(p, q, e, n):
     print("\nVerifying RSA parameters:")
@@ -219,28 +237,40 @@ def is_prime(n):
 
 # Example usage
 if __name__ == "__main__":
-    rsa_core = RSACore()
-    print("Generating RSA keys...")
-    pub_key, priv_key = rsa_core.generate_keypair()
-    print(f"Public Key (e,n): {pub_key}")
-    print(f"Private Key (d,n): {priv_key}")
+    try:
+        rsa_core = RSACore()
+        print("Generating RSA keys...")
+        pub_key, priv_key = rsa_core.generate_keypair()
+        print(f"Public Key (e,n): {pub_key}")
+        print(f"Private Key (d,n): {priv_key}")
 
-    message = b"Hello, RSA with OAEP and SHA3!"
+        # Original Message
+        message = b"Hello, RSA with OAEP and SHA3!"
+        print(f"\nOriginal message: {message}")
 
-    # Encrypt the message using the public key with OAEP
-    encrypted_message = rsa_core.encrypt(message, pub_key)
-    print(f"Encrypted Message: {encrypted_message}")
+        # Encrypt the message using the public key with OAEP
+        encrypted_message = rsa_core.encrypt(message, pub_key)
+        print(f"Encrypted Message: {encrypted_message}")
 
-    # Decrypt the message using the private key with OAEP
-    decrypted_message = rsa_core.decrypt(encrypted_message, priv_key)
-    print(f"Decrypted Message: {decrypted_message}")
+        # Decrypt the message using the private key with OAEP
+        decrypted_message = rsa_core.decrypt(encrypted_message, priv_key)
+        print(f"Decrypted Message: {decrypted_message}")
 
-    # Signing the message
-    print("\nSigning the message...")
-    signature = sign(message, priv_key)
-    print(f"Signature (Base64): {signature}")
+        # Signing the message
+        print("\nSigning the message...")
+        signature = sign(message, priv_key)
+        print(f"Signature (Base64): {signature}")
 
-    # Verifying the signature
-    print("\nVerifying the signature...")
-    is_valid = verify(message, signature, pub_key)
-    print(f"Signature valid: {is_valid}")
+        # Verifying the signature
+        print("\nVerifying the signature...")
+        is_valid = verify(message, signature, pub_key)
+        print(f"Signature valid: {is_valid}")
+
+        # Verify the whole process
+        if message == decrypted_message and is_valid:
+            print("\nSuccess! The message was correctly encrypted, decrypted, signed, and verified.")
+        else:
+            print("\nError: The process failed somewhere.")
+
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
