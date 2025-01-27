@@ -64,11 +64,19 @@ class RSACore:
 
     def encrypt(self, message, key):
         e, n = key
-        return self.mod_pow(message, e, n)
+        oaep = OAEP(len(bin(n)) - 2)
+        padded_message = oaep.pad(message)
+        padded_int = int.from_bytes(padded_message, byteorder='big')
+        encrypted_int = self.mod_pow(padded_int, e, n)
+        return encrypted_int
     
     def decrypt(self, ciphertext, key):
         d, n = key
-        return self.mod_pow(ciphertext, d, n)
+        decrypted_int = self.mod_pow(ciphertext, d, n)
+        decrypted_message = decrypted_int.to_bytes((decrypted_int.bit_length() + 7) // 8, byteorder='big')
+        oaep = OAEP(len(bin(n)) - 2)
+        original_message = oaep.unpad(decrypted_message)
+        return original_message
     
     def mod_pow(self, base, exp, mod):
         result = 1
@@ -121,6 +129,7 @@ class OAEP:
 
         print(f"Length of padded message: {len(padded)}")
         print(f"Value of self.k0: {self.k0}")
+
         masked_seed = padded[:self.k0]
         masked_db = padded[self.k0:]
 
@@ -156,14 +165,15 @@ class OAEP:
 
 def sign(message, private_key):
     hashed = int.from_bytes(sha3_256(message).digest(), byteorder='big')
-    signature = rsa_core.encrypt(hashed, private_key)
+    signature = rsa_core.encrypt(hashed.to_bytes((hashed.bit_length() + 7) // 8, byteorder='big'), private_key)
     return base64.b64encode(signature.to_bytes((signature.bit_length() + 7) // 8, byteorder='big'))
+
 
 def verify(message, signature, public_key):
     hashed = int.from_bytes(sha3_256(message).digest(), byteorder='big')
     signature = int.from_bytes(base64.b64decode(signature), byteorder='big')
     decrypted_hash = rsa_core.decrypt(signature, public_key)
-    return hashed == decrypted_hash
+    return hashed == int.from_bytes(decrypted_hash, byteorder='big')
 
 def verify_rsa_parameters(p, q, e, n):
     print("\nVerifying RSA parameters:")
@@ -216,24 +226,14 @@ if __name__ == "__main__":
     print(f"Private Key (d,n): {priv_key}")
 
     message = b"Hello, RSA with OAEP and SHA3!"
-    
-    # Apply OAEP padding
-    oaep = OAEP(1024)
-    padded_message = oaep.pad(message)
-    print(f"Padded Message: {padded_message}")
 
-    # Encrypt the padded message using the public key
-    encrypted_message = rsa_core.encrypt(int.from_bytes(padded_message, byteorder='big'), pub_key)
+    # Encrypt the message using the public key with OAEP
+    encrypted_message = rsa_core.encrypt(message, pub_key)
     print(f"Encrypted Message: {encrypted_message}")
 
-    # Decrypt the message using the private key
+    # Decrypt the message using the private key with OAEP
     decrypted_message = rsa_core.decrypt(encrypted_message, priv_key)
-    decrypted_message_bytes = decrypted_message.to_bytes((decrypted_message.bit_length() + 7) // 8, byteorder='big')
-    print(f"Decrypted Message (padded): {decrypted_message_bytes}")
-
-    # Remove OAEP padding
-    original_message = oaep.unpad(decrypted_message_bytes)
-    print(f"Original Message: {original_message}")
+    print(f"Decrypted Message: {decrypted_message}")
 
     # Signing the message
     print("\nSigning the message...")
