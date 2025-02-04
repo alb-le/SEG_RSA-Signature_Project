@@ -45,7 +45,7 @@ class RSACore:
 
     def generate_prime_number(self):
         while True:
-            prime_candidate = self.generate_prime_candidate(self.bits)
+            prime_candidate = self.generate_prime_candidate()
             if self.miller_rabin_test(prime_candidate):
                 return prime_candidate
 
