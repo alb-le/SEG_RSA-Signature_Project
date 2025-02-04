@@ -66,11 +66,16 @@ class RSACore:
     
     def rsaep(self, public_key, m):
         """RSAEP implementation (Section 5.1.1)"""
+        # Unpack the public key tuple into modulus (n) and public exponent (e)
         n, e = public_key
-        
+        # Check if message representative m is within valid range
+        # m must be non-negative (>= 0) and less than modulus n
         if not (0 <= m < n):
             raise ValueError("message representative out of range")
-            
+        # Perform RSA encryption operation:
+        # c = m^e mod n
+        # pow(m, e, n) is Python's built-in modular exponentiation
+        # This is more efficient than (m ** e) % n
         return pow(m, e, n)
 
     def rsadp(self, private_key, c):
@@ -83,13 +88,14 @@ class RSACore:
         return pow(c, d, n)
 
 class OAEP:
-    def __init__(self, n_bits):
+    def __init__(self, n_len,rsa_core):
         """Initialize OAEP parameters"""
         self.hLen = 32  # SHA3-256 output length
         self.n_len = n_len
         self.L = b""  # Default empty label
+        self.rsa_core = rsa_core
 
-    def mgf1(self, seed, length):
+    def _mgf1(self, seed, length):
         """Mask Generation Function based on SHA3-256"""
         if length > (2**32) * self.hLen:
             raise ValueError("Mask too long")
@@ -181,37 +187,28 @@ class OAEP:
         return sum(x != y for x, y in zip(a, b)) == 0
 
     def encrypt_with_oaep(self, message, public_key, label=None):
-        """RSAES-OAEP-ENCRYPT implementation"""
-        n, e = public_key
-        k = (n.bit_length() + 7) // 8
-        
-        oaep = OAEP(k)
-        
+        """RSAES-OAEP-ENCRYPT implementation using RSAEP primitive"""
         try:
-            EM = oaep.encode(message, label)
+            EM = self.encode(message, label)
             m = int.from_bytes(EM, byteorder='big')
-            c = pow(m, e, n)
-            
-            return c.to_bytes(k, byteorder='big')
+            # Use RSAEP primitive
+            c = self.rsa_core.rsaep(public_key,m)
+            return c.to_bytes(self.n_len, byteorder='big')
         except ValueError as e:
-            raise ValueError("encryption error") from e
+            raise ValueError("encryption error: " + str(e)) from e
 
     def decrypt_with_oaep(self, ciphertext, private_key, label=None):
         """RSAES-OAEP-DECRYPT implementation"""
-        n, d = private_key
-        k = (n.bit_length() + 7) // 8
-        
-        oaep = OAEP(k)
-        
         try:
-            if len(ciphertext) != k:
+            if len(ciphertext) != self.n_len:
                 raise ValueError("decryption error")
                 
             c = int.from_bytes(ciphertext, byteorder='big')
-            m = pow(c, d, n)
+            # Use RSADP primitive
+            m = self.rsa_core.rsadp(private_key,c)
             
-            EM = m.to_bytes(k, byteorder='big')
-            return oaep.decode(EM, label)
+            EM = m.to_bytes(self.n_len, byteorder='big')
+            return self.decode(EM, label)
         except Exception as e:
             raise ValueError("decryption error") from e
         
@@ -242,26 +239,41 @@ def main():
         # Key generation
         rsa = RSACore()
         pub_key, priv_key = rsa.generate_keypair()
-        
+        signing_pub_key, signing_priv_key = rsa.generate_keypair()
+
+        print(f"public key:{pub_key}")
+        print(f"private key:{priv_key}")
         # Original message
-        message = b"Hello, Optimized RSA with OAEP and SHA3!"
-        label = b"optional-label"
+        message = b"Optimized RSA with OAEP and SHA3"
+        label = b"optional"
+
+        # Assinatura da mensagem
+        signature = RSASignature.sign(message, signing_priv_key)
+
+        # Concatenar mensagem e assinatura
+        combined_message = message + base64.b64decode(signature)
+
         
-        # Encryption and decryption
-        oaep = OAEP(k=(pub_key[1].bit_length() + 7) // 8)
-        encrypted = oaep.encrypt_with_oaep(message, pub_key, label)
-        decrypted = oaep.decrypt_with_oaep(encrypted, priv_key, label)
+        # Criptografia com OAEP
+        oaep = OAEP(n_len=(pub_key[1].bit_length() + 7) // 8, rsa_core=rsa)
+        encrypted = oaep.encrypt_with_oaep(combined_message, pub_key, label)
+
+        # Decriptação com OAEP
+        decrypted_combined = oaep.decrypt_with_oaep(encrypted, priv_key, label)
+
+        # Separar mensagem e assinatura
+        decrypted_message = decrypted_combined[:len(message)]
+        decrypted_signature = base64.b64encode(decrypted_combined[len(message):])
         
-        # Signing and verification
-        signature = RSASignature.sign(message, priv_key)
-        is_valid = RSASignature.verify(message, signature, pub_key)
+        # Verificação da assinatura
+        is_valid = RSASignature.verify(decrypted_message, decrypted_signature, signing_pub_key)
         
         # Output results
         print(f"Original message: {message}")
-        print(f"Decrypted message: {decrypted}")
+        print(f"Decrypted message: {decrypted_message}")
         print(f"Signature valid: {is_valid}")
         
-        assert message == decrypted, "Decryption failed"
+        assert message == decrypted_message, "Decryption failed"
         assert is_valid, "Signature verification failed"
         print("Success! RSA operations completed correctly.")
 
