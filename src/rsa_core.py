@@ -91,7 +91,7 @@ class OAEP:
     def __init__(self, n_len,rsa_core):
         """Initialize OAEP parameters"""
         self.hLen = 32  # SHA3-256 output length
-        self.n_len = n_len
+        self.n_len = n_len # Size of RSA modulus in bytes
         self.L = b""  # Default empty label
         self.rsa_core = rsa_core
 
@@ -117,8 +117,17 @@ class OAEP:
         mLen = len(message)
         if len(L) > (2**61 - 1):
             raise ValueError("label too long")
-        if mLen > self.n_len - 2*self.hLen - 2:
-            raise ValueError("message too long")
+
+        # Calculate maximum message length
+        max_message_len = self.n_len - 2 * self.hLen - 2
+
+        if mLen > max_message_len:
+            # Calculate how many characters are beyond the limit
+            excess_chars = mLen - max_message_len
+            raise ValueError(
+            f"Message too long. It exceeds the limit by {excess_chars} characters. "
+            f"Please remove at least {excess_chars} characters to fit within the limit."
+        )
 
         lHash = sha3_256(L).digest()
         PS = b'\x00' * (self.n_len - mLen - 2*self.hLen - 2)
@@ -237,14 +246,14 @@ def main():
     """Demonstration of RSA encryption, decryption, signing, and verification"""
     try:
         # Key generation
-        rsa = RSACore()
+        rsa = RSACore(bits=2048)
         pub_key, priv_key = rsa.generate_keypair()
         signing_pub_key, signing_priv_key = rsa.generate_keypair()
 
         print(f"public key:{pub_key}")
         print(f"private key:{priv_key}")
         # Original message
-        message = b"Optimized RSA with OAEP and SHA3"
+        message = b"Optimized RSA"
         label = b"optional"
 
         # Assinatura da mensagem
@@ -253,10 +262,27 @@ def main():
         # Concatenar mensagem e assinatura
         combined_message = message + base64.b64decode(signature)
 
-        
+        # Calculate n_len from the public key
+        n_len = (pub_key[1].bit_length() + 7) // 8  # pub_key[1] is the modulus n
+
+        # Calculate maximum message length
+        hLen = 32  # SHA3-256 output length
+        max_message_len = n_len - 2 * hLen - 2
+
+        # Check if combined_message is too long
+        if len(combined_message) > max_message_len:
+            excess_chars = len(combined_message) - max_message_len
+            raise ValueError(
+                f"Combined message (message + signature) too long. "
+                f"It exceeds the limit by {excess_chars} characters. "
+                f"Please reduce the message length or use a larger RSA key."
+            )
+
         # Criptografia com OAEP
-        oaep = OAEP(n_len=(pub_key[1].bit_length() + 7) // 8, rsa_core=rsa)
+        oaep = OAEP(n_len, rsa_core=rsa)
         encrypted = oaep.encrypt_with_oaep(combined_message, pub_key, label)
+
+        print("Ciphertext:", ciphertext.hex())
 
         # Decriptação com OAEP
         decrypted_combined = oaep.decrypt_with_oaep(encrypted, priv_key, label)
