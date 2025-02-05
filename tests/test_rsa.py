@@ -1,9 +1,11 @@
 import unittest
-from src.rsa_core import RSACore, OAEP, sign, verify
+from src.rsa_core import RSACore, OAEP, RSASignature
+
 
 class TestRSA(unittest.TestCase):
 
     def setUp(self):
+        self.signature_service = RSASignature
         self.rsa_core = RSACore()
         self.pub_key, self.priv_key = self.rsa_core.generate_keypair()
 
@@ -23,9 +25,10 @@ class TestRSA(unittest.TestCase):
 
     def test_sign_and_verify(self):
         message = b"Test message for RSA signing"
-        signature = sign(message, self.priv_key)
-        is_valid = verify(message, signature, self.pub_key)
+        signature = self.signature_service.sign(message, self.priv_key)
+        is_valid = self.signature_service.verify(message, signature, self.pub_key)
         self.assertTrue(is_valid)
+
 
 if __name__ == '__main__':
     unittest.main()
