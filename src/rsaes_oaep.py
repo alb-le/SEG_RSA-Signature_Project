@@ -138,7 +138,7 @@ class OAEP:
             return False
         return sum(x != y for x, y in zip(a, b)) == 0
 
-    def rsaes_oaep_encrypt(self, public_key, message, L=None):
+    def rsaes_oaep_encrypt(self, public_key, message, label=None):
         """
         RSAES-OAEP-ENCRYPT operation.
         public_key: (n, e) tuple
@@ -147,7 +147,7 @@ class OAEP:
         Return ciphertext (C), an octet string
         """
         # Length checking
-        L = label if label is not None else self.L
+        L = label if label is not None else self.empty_lHash
         mLen = len(message)
         if len(L) > (2 ** 61 - 1):
             raise ValueError("label too long")
@@ -179,7 +179,7 @@ class OAEP:
         Return decrypted message (M), an octet string
         """
         # Length checking
-        L = label if label is not None else self.L
+        L = label if label is not None else self.empty_lHash
         k = self.n_len
         if len(L) > (2 ** 61 - 1):
             raise ValueError("decryption error")
