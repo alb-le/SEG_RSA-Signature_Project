@@ -81,7 +81,9 @@ class RSACore:
         # Calculate private key
         d = pow(self.e, -1, phi)
 
-        return (self.e, n), (d, n)
+        private_key = (d, n)
+        public_key = (self.e, n)
+        return public_key, private_key
 
     def rsaep(self, public_key, m):
         #RSAEP implementation (Section 5.1.1)
