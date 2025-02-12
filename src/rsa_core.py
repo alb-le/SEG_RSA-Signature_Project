@@ -1,7 +1,7 @@
 import random
 from hashlib import sha3_256
 class RSACore:
-    def __init__(self, bits=1024, public_exponent=65537):
+    def __init__(self, bits=2048, public_exponent=65537):
         """
         Initialize RSA parameters with specified bit length and public exponent.
         bits: length in bits of the RSA modulus n

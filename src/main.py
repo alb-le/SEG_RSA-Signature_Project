@@ -1,6 +1,7 @@
 from rsa_core import RSACore
 from rsaes_oaep import OAEP
 from RSASP_RSAVP import RSASignature
+import base64
 
 
 def main():
@@ -15,13 +16,16 @@ def main():
         print(f"private key:{priv_key}")
         # Original message
         message = b"Optimized RSA"
-        label = b"optional"
+        label = b"Certificado"
 
         # Assinatura da mensagem
         signature = RSASignature.sign(message, signing_priv_key)
 
         # Concatenar mensagem e assinatura
         combined_message = message + base64.b64decode(signature)
+
+        # Calculate n_len from the public key
+        n_len = (pub_key[1].bit_length() + 7) // 8  # pub_key[1] is the modulus n
 
         # Encryption with RSAES-OAEP using SHA-256
         oaep = OAEP(n_len, rsa_core=rsa,hash_algorithm='sha256')
