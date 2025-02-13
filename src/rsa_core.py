@@ -1,5 +1,11 @@
 import random
-from hashlib import sha3_256
+from time import sleep
+
+from src.utils import bit_len
+
+tempo_espera_max = 0
+
+
 class RSACore:
     def __init__(self, bits=2048, public_exponent=65537):
         """
@@ -11,11 +17,16 @@ class RSACore:
         self.e = public_exponent  # Commonly used public exponent
 
     #
-    def generate_prime_candidate(self):  # Generate a random prime candidate with specified bit length
+    def generate_prime_candidate(self, other_b_len):
         # Generate random odd integer of specified bits
-        #Return a candidate prime number (r_i)
-        candidate = random.getrandbits(self.bits)
-        candidate |= (1 << self.bits - 1) | 1  # Set MSB and LSB to 1
+        # Return a candidate prime number (r_i)
+        if not other_b_len:
+            candidate_bit_len = random.randint(17, self.bits)
+        else:
+            candidate_bit_len = self.bits - other_b_len
+
+        candidate = random.getrandbits(candidate_bit_len)
+        candidate |= (1 << candidate_bit_len - 1) | 1  # Set MSB and LSB to 1
         return candidate
 
     def miller_rabin_test(self, n, k=128):
@@ -52,13 +63,13 @@ class RSACore:
                 return False
         return True
 
-    def generate_prime_number(self):
+    def generate_prime_number(self, other_b_len=None):
         """
         Generate a prime number using the Miller-Rabin test.
         Return a prime number (r_i)
         """
         while True:
-            prime_candidate = self.generate_prime_candidate()
+            prime_candidate = self.generate_prime_candidate(other_b_len)
             if self.miller_rabin_test(prime_candidate):
                 return prime_candidate
 
@@ -70,10 +81,10 @@ class RSACore:
         d = RSA private exponent
         Return (public_key, private_key)
         """
-        print("Generating p...")
+        print("Gerando p...")
         p = self.generate_prime_number()
-        print("Generating q...")
-        q = self.generate_prime_number()
+        print("Gerando q...")
+        q = self.generate_prime_number(other_b_len=bit_len(p))
 
         n = p * q
         phi = (p - 1) * (q - 1)
@@ -83,10 +94,15 @@ class RSACore:
 
         private_key = (d, n)
         public_key = (self.e, n)
+        print(public_key)
+        print(private_key)
+
+        sleep(random.randint(0, tempo_espera_max))  # Segurança contra ataque baseado em tempo de geração de chave
+
         return public_key, private_key
 
     def rsaep(self, public_key, m):
-        #RSAEP implementation (Section 5.1.1)
+        # RSAEP implementation (Section 5.1.1)
         """
         RSA encryption primitive (RSAEP).
         public_key: (n, e) tuple
@@ -106,7 +122,7 @@ class RSACore:
         return pow(m, e, n)
 
     def rsadp(self, private_key, c):
-        #RSADP implementation (Section 5.1.2)
+        # RSADP implementation (Section 5.1.2)
         """
         RSA decryption primitive (RSADP).
         private_key: (n, d) tuple

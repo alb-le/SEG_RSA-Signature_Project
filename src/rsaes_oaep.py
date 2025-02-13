@@ -1,30 +1,21 @@
-
 import os
-from hashlib import sha1,sha224,sha256
+from hashlib import sha256
 from data_conversion import i2osp, os2ip
-class OAEP: #OAEP Padding
-    def __init__(self, n_len, rsa_core,hash_algorithm='sha1'):
+
+
+class OAEP:  # OAEP Padding
+    def __init__(self, n_len, rsa_core):
         """Initialize OAEP parameters
         n_len: length in octets of the RSA modulus n
         rsa_core: instance of the RSACore class
         hash_algorithm: the hash function to be used (sha1, sha224, sha256)
         """
-        self.hash_algorithm = hash_algorithm.lower()
-        self.hash_func, self.hLen, self.empty_lHash = self._select_hash_function(hash_algorithm)
+        self.hash_func = sha256
+        self.hLen = 32
+        self.empty_lHash = bytes.fromhex("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
         self.n_len = n_len  # Size of RSA modulus in bytes
         self.L = b""  # Default empty label
         self.rsa_core = rsa_core
-    
-    def _select_hash_function(self, hash_algorithm):
-        """Select hash function based on the algorithm name"""
-        if hash_algorithm == "sha1":
-            return sha1, 20, bytes.fromhex("da39a3ee5e6b4b0d3255bfef95601890afd80709")
-        elif hash_algorithm == "sha224":
-            return sha224, 28, bytes.fromhex("d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f")
-        elif hash_algorithm == "sha256":
-            return sha256, 32, bytes.fromhex("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
-        else:
-            raise ValueError("unsupported hash function")
 
     def _mgf1(self, seed, length):
         """Mask Generation Function based on SHA3-256"""
@@ -128,7 +119,7 @@ class OAEP: #OAEP Padding
         k = self.n_len
         if mLen > k - 2 * self.hLen - 2:
             raise ValueError("message too long")
-        
+
         # EME-OAEP encoding
         EM = self.encode(message, L)
 

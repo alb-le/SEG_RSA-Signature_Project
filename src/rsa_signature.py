@@ -3,28 +3,15 @@ from hashlib import sha1,sha224,sha256
 from data_conversion import i2osp,os2ip
 
 class RSASignature:
-    def __init__(self, hash_algorithm='sha1'):
+    def __init__(self):
         """
         Initialize RSASignature with specified hash algorithm.
         hash_algorithm: the hash function to be used (sha1, sha224, sha256)
         """
-        self.hash_algorithm = hash_algorithm.lower()
-        self.hash_func = self._select_hash_function(hash_algorithm)
+        self.hash_func = sha256
 
-    def _select_hash_function(self, hash_algorithm):
-        if hash_algorithm == 'sha1':
-            return sha1
-        elif hash_algorithm == 'sha224':
-            return sha224
-        elif hash_algorithm == 'sha256':
-            return sha256
-        else:
-            raise ValueError("Unsupported hash algorithm")
-
-    def sign(self, M, private_key, hash_algorithm='sha1'): # M = message Octet-String primitive 
+    def sign(self, M, private_key): # M = message Octet-String primitive
         """Sign a message using RSA with the specified hash algorithm"""
-        if hash_algorithm:
-            self.hash_func = self._select_hash_function(hash_algorithm)
         try:
             hashed = self.hash_func(M).digest()
             m = os2ip(hashed) # Integer primitive 
