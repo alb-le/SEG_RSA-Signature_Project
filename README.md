@@ -20,7 +20,7 @@ rsa = RSACore()
 pub_key, priv_key = rsa.generate_keypair()
 
 # Use OAEP padding
-oaep = OAEP(1024)
+oaep = OAEP(2048)
 message = b"Your message here"
 padded = oaep.pad(message)
 ```
@@ -35,7 +35,8 @@ rsa_signature_project/
 └── .gitignore
 ```
 Esta implementação inclui:
-1. Geração de chaves RSA com primos de 1024 bits
+1. Geração de chaves RSA com primos cujo produto tem 2048 bits
 2. Teste de primalidade Miller-Rabin
 3. Implementação de OAEP
 4. Funções auxiliares para operações modulares
+5. Funções para assinatura

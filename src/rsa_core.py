@@ -1,5 +1,4 @@
 import random
-from time import sleep
 
 from src.utils import bit_len
 
@@ -98,8 +97,6 @@ class RSACore:
 
         private_key = (d, n)
         public_key = (self.e, n)
-
-        sleep(random.randint(0, tempo_espera_max))  # Segurança contra ataque baseado em tempo de geração de chave
 
         return public_key, private_key
 

@@ -1,6 +1,10 @@
+import datetime
 import os
 from hashlib import sha256
 from data_conversion import i2osp, os2ip
+from time import sleep
+
+function_estimated_time = 0
 
 
 class OAEP:  # OAEP Padding
@@ -101,7 +105,7 @@ class OAEP:  # OAEP Padding
             return False
         return sum(x != y for x, y in zip(a, b)) == 0
 
-    def rsaes_oaep_encrypt(self, public_key, message, label=b""):
+    def rsaes_oaep_encrypt(self, message, public_key, label=b""):
         """
         RSAES-OAEP-ENCRYPT operation.
         public_key: (n, e) tuple
@@ -133,14 +137,15 @@ class OAEP:  # OAEP Padding
 
         return C
 
-    def rsaes_oaep_decrypt(self, private_key, ciphertext, label=b""):
+    def rsaes_oaep_decrypt(self, ciphertext, private_key, label=b""):
         """
         RSAES-OAEP-DECRYPT operation.
-        private_key: (n, d) tuple
         ciphertext (C): an octet string to be decrypted
+        private_key: (n, d) tuple
         label (L): optional label, an octet string
         Return decrypted message (M), an octet string
         """
+        start = datetime.datetime.now()
         L = label
 
         k = self.n_len
@@ -165,5 +170,9 @@ class OAEP:  # OAEP Padding
             message = self.decode(EM, L)
         except ValueError:
             raise ValueError("Descryption error")
+
+        end = datetime.datetime.now()
+        func_duration = max((function_estimated_time - (end - start).seconds), 0)
+        sleep(func_duration)  # Segurança contra ataque baseado em tempo de decriptação.
 
         return message
