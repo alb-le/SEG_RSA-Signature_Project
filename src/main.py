@@ -33,7 +33,8 @@ def main():
     print(f"Signature: {signature}")
     # Concatenar mensagem e assinatura
 
-    combined_message = M + base64Signature
+    # combined_message = M + base64Signature
+    combined_message = M
     print(f"Combined message: {combined_message}")
 
     # Calculate n_len from the public key, the n_len is the length in octets of the RSA modulus n
@@ -54,7 +55,7 @@ def main():
     decrypted_signature = base64.b64encode(decrypted_combined[len(M):])
 
     # Verificação da assinatura
-    is_valid = rsa_signature.verify(decrypted_message, decrypted_signature, signing_pub_key, hash_algorithm=hash_algorithm)
+    is_valid = rsa_signature.verify(decrypted_message, decrypted_signature, signing_pub_key)
 
     # Output results
     print(f"Original message: {M}")
@@ -67,4 +68,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    rsa = RSACore(bits=2048)
+
+    print("Generating RSA keys...")
+    pub_key, priv_key = rsa.generate_keypair()
+    print("keys:")
+    print(f"public: {pub_key}")
+    print(f"private: {priv_key}")

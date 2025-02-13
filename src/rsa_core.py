@@ -86,6 +86,10 @@ class RSACore:
         print("Gerando q...")
         q = self.generate_prime_number(other_b_len=bit_len(p))
 
+        print("P e Q:")
+        print(p)
+        print(q)
+
         n = p * q
         phi = (p - 1) * (q - 1)
 
@@ -94,8 +98,6 @@ class RSACore:
 
         private_key = (d, n)
         public_key = (self.e, n)
-        print(public_key)
-        print(private_key)
 
         sleep(random.randint(0, tempo_espera_max))  # Segurança contra ataque baseado em tempo de geração de chave
 
@@ -110,7 +112,7 @@ class RSACore:
         Return ciphertext representative (c)
         """
         # Unpack the public key tuple into modulus (n) and public exponent (e)
-        n, e = public_key
+        e, n = public_key
         # Check if message representative m is within valid range
         # m must be non-negative (>= 0) and less than modulus n
         if not (0 <= m < n):
@@ -129,7 +131,7 @@ class RSACore:
         c: ciphertext representative, an integer between 0 and n-1
         Return message representative (m)
         """
-        n, d = private_key
+        d, n = private_key
 
         if not (0 <= c < n):
             raise ValueError("ciphertext representative out of range")

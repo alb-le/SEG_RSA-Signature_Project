@@ -1,4 +1,5 @@
 import base64
+import traceback
 from hashlib import sha1,sha224,sha256
 from data_conversion import i2osp,os2ip
 
@@ -24,11 +25,8 @@ class RSASignature:
             print(f"An error occurred during signing: {e}")
             return None
 
-    def verify(self, M, signature, public_key, hash_algorithm='sha1'):
+    def verify(self, M, signature, public_key):
         """Verify an RSA signature with the specified hash algorithm"""
-        if hash_algorithm:
-            self.hash_func = self._select_hash_function(hash_algorithm)
-
         try:
             hashed = self.hash_func(M).digest()
             m = os2ip(hashed)
@@ -39,4 +37,5 @@ class RSASignature:
             return m == verified_m
         except Exception as e:
             print(f"An error occurred during verification: {e}")
+            traceback.print_exc()
             return False

@@ -12,7 +12,6 @@ class OAEP:  # OAEP Padding
         """
         self.hash_func = sha256
         self.hLen = 32
-        self.empty_lHash = bytes.fromhex("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
         self.n_len = n_len  # Size of RSA modulus in bytes
         self.L = b""  # Default empty label
         self.rsa_core = rsa_core
@@ -32,7 +31,7 @@ class OAEP:  # OAEP Padding
 
         return result[:length]
 
-    def encode(self, message, L=None):
+    def encode(self, message: bytes, L=b""):
         """EME-OAEP encoding (Section 7.1.1)
         message (M): an octet string to be encoded
         L: optional label, an octet string
@@ -59,7 +58,7 @@ class OAEP:  # OAEP Padding
         # Concatenate everything
         return b'\x00' + maskedSeed + maskedDB
 
-    def decode(self, EM, L=None):
+    def decode(self, EM, L=b""):
         """EME-OAEP decoding (Section 7.1.2)
         EM: encoded message, an octet string
         L: optional label, an octet string
@@ -102,7 +101,7 @@ class OAEP:  # OAEP Padding
             return False
         return sum(x != y for x, y in zip(a, b)) == 0
 
-    def rsaes_oaep_encrypt(self, public_key, message, label=None):
+    def rsaes_oaep_encrypt(self, public_key, message, label=b""):
         """
         RSAES-OAEP-ENCRYPT operation.
         public_key: (n, e) tuple
@@ -111,7 +110,7 @@ class OAEP:  # OAEP Padding
         Return ciphertext (C), an octet string
         """
         # Length checking
-        L = label if label is not None else self.empty_lHash
+        L = label
         mLen = len(message)
         if len(L) > (2 ** 61 - 1):
             raise ValueError("label too long")
@@ -134,7 +133,7 @@ class OAEP:  # OAEP Padding
 
         return C
 
-    def rsaes_oaep_decrypt(self, private_key, ciphertext, label=None):
+    def rsaes_oaep_decrypt(self, private_key, ciphertext, label=b""):
         """
         RSAES-OAEP-DECRYPT operation.
         private_key: (n, d) tuple
@@ -142,8 +141,8 @@ class OAEP:  # OAEP Padding
         label (L): optional label, an octet string
         Return decrypted message (M), an octet string
         """
-        # Length checking
-        L = label if label is not None else self.empty_lHash
+        L = label
+
         k = self.n_len
         if len(L) > (2 ** 61 - 1):
             raise ValueError("decryption error")

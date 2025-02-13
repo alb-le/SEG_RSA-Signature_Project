@@ -1,5 +1,6 @@
-bit_len = lambda x: len(bin(x - 1)) - 2
+def bit_len(n: int):
+    return len(bin(n - 1)) - 2
 
 
-def octet_len(b):
-    return (len(b) + 7) // 8
+def octet_len(n: int):
+    return (bit_len(n) + 7) // 8
