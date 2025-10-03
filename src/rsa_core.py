@@ -15,7 +15,6 @@ class RSACore:
         self.bits = bits
         self.e = public_exponent  # Commonly used public exponent
 
-    #
     def generate_prime_candidate(self, other_b_len):
         # Generate random odd integer of specified bits
         # Return a candidate prime number (r_i)

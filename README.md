@@ -1,42 +1,17 @@
-# RSA Signature Project
+# RSA Project
 
-Implementation of RSA signature generation and verification system with OAEP padding.
+Implementação de RSA para assinatura e criptografia. É usado OAEP de padding.
 
-## Features (Part I)
-- RSA key generation with 1024-bit primes
+## Features
+- RSA key generation with n-bit primes
 - Miller-Rabin primality testing
 - OAEP (Optimal Asymmetric Encryption Padding)
 - Modular arithmetic operations
 
-## Requirements
-- Python 3.8+
-
-## Usage
-```python
-from src.rsa_core import RSACore, OAEP
-
-# Generate RSA keys
-rsa = RSACore()
-pub_key, priv_key = rsa.generate_keypair()
-
-# Use OAEP padding
-oaep = OAEP(2048)
-message = b"Your message here"
-padded = oaep.pad(message)
-```
-Project Structure
-```
-rsa_signature_project/
-├── src/
-│   └── rsa_core.py
-├── tests/
-├── docs/
-├── README.md
-└── .gitignore
-```
 Esta implementação inclui:
-1. Geração de chaves RSA com primos cujo produto tem 2048 bits
-2. Teste de primalidade Miller-Rabin
-3. Implementação de OAEP
-4. Funções auxiliares para operações modulares
-5. Funções para assinatura
+- Geração de chaves RSA com primos cujo produto tem 2048 bits ou qualquer outro valor escolhido;
+- Teste de primalidade Miller-Rabin;
+- Implementação de padding OAEP (Optimal Asymmetric Encryption Padding);
+- Funções auxiliares para operações modulares;
+- Funções de criptografia;
+- Funções para assinatura.

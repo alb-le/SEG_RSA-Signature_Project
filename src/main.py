@@ -1,6 +1,6 @@
-from rsa_core import RSACore
-from rsaes_oaep import OAEP
-from rsa_signature import RSASignature
+from src.rsa_core import RSACore
+from src.rsaes_oaep import OAEP
+from src.rsa_signature import RSASignature
 
 from src.message_delivery_service import MessageDeliveryService
 from src.utils import octet_len
