@@ -1,7 +1,7 @@
 import datetime
 import os
 from hashlib import sha256
-from data_conversion import i2osp, os2ip
+from src.data_conversion import i2osp, os2ip
 from time import sleep
 
 function_estimated_time = 0

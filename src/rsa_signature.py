@@ -1,7 +1,7 @@
 import base64
 import traceback
 from hashlib import sha1,sha224,sha256
-from data_conversion import i2osp,os2ip
+from src.data_conversion import i2osp,os2ip
 from src.utils import b64
 
 
